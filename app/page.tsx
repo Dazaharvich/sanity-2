@@ -1,26 +1,43 @@
-import { client } from "@/sanity/lib/client";
-import groq from 'groq';
+import { client, urlFor, groq} from "@/sanity/lib/client";
+import { blogCard } from "@/sanity/lib/interface";
 import Image from "next/image";
+//import groq from "next-sanity";
 
-const getPosts = async (lastId: string = '') => {
-  const query = groq`*[_type == 'blog' && _id > $lastId] | order(_createdAt desc) [0...2] {
-    _id,
-      title,
-      smallDescription,
-      _createdAt,
-      "currentSlug": slug.current,
-      titleImage
-  }`
-  return client.fetch(query,{ lastId })
+async function getData() {
+  const query = groq`*[_type == 'blog'] | order(_createdAt desc) {
+    title,
+    smallDescription,
+    altText,
+    "currentSlug": slug.current,
+    "image": titleImage.asset->url,
+    image,
+}`;
+  const data = await client.fetch(query);
+  return data;
 }
-export default async function Home() {
-  
-  const posts =  await getPosts();
-  console.log(posts);
-  
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
 
+export default async function Home() {
+  const data: blogCard[] = await getData();
+  console.log(data);
+
+  return (
+    <main>
+      {data.map((post, id) => (
+        <div key={id}>
+          {post.image ? (
+            <Image
+              src={urlFor(post.image).url()}
+              alt={post.altText}
+              width={400}
+              height={250}
+            />
+          ) : (
+            <p>No image available</p>
+          )}
+          <p>{post.title}</p>
+          <p>{post.smallDescription}</p>
+        </div>
+      ))}
     </main>
   );
 }
